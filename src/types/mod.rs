@@ -48,6 +48,10 @@ pub struct Path {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Config {
+    #[serde(rename = "oldUrl")]
+    pub old_url: String,
+    #[serde(rename = "newUrl")]
+    pub new_url: String,
     #[serde(rename = "logFilePath")]
     pub log_file_path: String,
     #[serde(rename = "oldResPath")]

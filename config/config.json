@@ -1,6 +1,8 @@
 {
-  "logFilePath":"/Users/lvbin/Person/tron.log",
-  "oldResPath":"./res/old",
-  "newResPath":"./res/new",
-  "compareResPath":"./res/compare"
+  "oldUrl": "",
+  "newUrl": "",
+  "logFilePath": "",
+  "oldResPath": "",
+  "newResPath": "",
+  "compareResPath": ""
 }
