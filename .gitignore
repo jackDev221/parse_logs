@@ -1,2 +1,11 @@
-/target
-/res
+target
+res
+.idea
+.DS_Store
+.vscode
+node_modules
+*.log
+/tmp
+/volumes
+/logs
+/loadtest-config
