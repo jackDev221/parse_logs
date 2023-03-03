@@ -20,6 +20,7 @@ async fn main() -> anyhow::Result<()> {
     let mut client = RouterApiClient::new(
         Url::parse(config.old_url.as_str()).expect("decode old url fail"),
         Url::parse(config.new_url.as_str()).expect("decode new url fail"),
+        config.use_base_tokens.clone(),
         Duration::from_secs(15),
     );
     parse_logs_fn(&mut client, config).await?;

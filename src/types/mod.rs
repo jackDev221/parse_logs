@@ -60,6 +60,8 @@ pub struct Config {
     pub new_res_path: String,
     #[serde(rename = "compareResPath")]
     pub compare_res_path: String,
+    #[serde(rename = "useBaseTokens")]
+    pub use_base_tokens: String,
 }
 
 impl Config {

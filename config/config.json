@@ -4,5 +4,6 @@
   "logFilePath": "",
   "oldResPath": "",
   "newResPath": "",
-  "compareResPath": ""
+  "compareResPath": "",
+  "useBaseTokens": "false"
 }

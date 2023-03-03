@@ -11,10 +11,11 @@ pub struct RouterApiClient {
     old_router_url: Url,
     new_router_url: Url,
     http_client: reqwest::Client,
+    use_base_tokens: String,
 }
 
 impl RouterApiClient {
-    pub fn new(old_router_url: Url, new_router_url: Url, req_server_timeout: Duration) -> Self {
+    pub fn new(old_router_url: Url, new_router_url: Url, use_base_tokens: String, req_server_timeout: Duration) -> Self {
         let http_client = reqwest::ClientBuilder::new()
             .timeout(req_server_timeout)
             .build()
@@ -24,9 +25,9 @@ impl RouterApiClient {
             old_router_url,
             new_router_url,
             http_client,
+            use_base_tokens,
         }
     }
-
 
     async fn with_retries<I, E, Fn, Fut>(&self, operation: Fn) -> anyhow::Result<I>
         where
@@ -64,12 +65,12 @@ impl RouterApiClient {
     }
 
     pub async fn call_old_router(&mut self, log_content: &LogContent) -> anyhow::Result<RouterResult> {
-        gen_url(&mut self.old_router_url, log_content);
+        gen_url(&mut self.old_router_url, log_content, None);
         self.call_router(&self.old_router_url).await
     }
 
     pub async fn call_new_router(&mut self, log_content: &LogContent) -> anyhow::Result<RouterResult> {
-        gen_url(&mut self.new_router_url, log_content);
+        gen_url(&mut self.new_router_url, log_content, Some(self.use_base_tokens.clone()));
         self.call_router(&self.new_router_url).await
     }
 
@@ -93,8 +94,8 @@ impl RouterApiClient {
     }
 }
 
-fn gen_url(url: &mut Url, log_content: &LogContent) {
-    let res = format!(
+fn gen_url(url: &mut Url, log_content: &LogContent, use_base_tokens_op: Option<String>) {
+    let mut res = format!(
         "fromToken={}&fromTokenAddr={}&toToken={}&toTokenAddr={}&inAmount={}&fromDecimal={}&toDecimal={}",
         log_content.from_token,
         log_content.from_token_addr,
@@ -104,5 +105,8 @@ fn gen_url(url: &mut Url, log_content: &LogContent) {
         log_content.from_decimal,
         log_content.to_decimal
     );
+    if use_base_tokens_op.is_some() {
+        res = format!("{}&useBaseTokens={}", res, use_base_tokens_op.unwrap())
+    }
     url.set_query(Some(res.as_str()))
 }
