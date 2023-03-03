@@ -19,7 +19,7 @@ const LOG_CONTENT_FLAG: &str = "logContent";
 pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyhow::Result<()> {
     let file = File::open(config.log_file_path.as_str())?;
     let reader = BufReader::new(file);
-    let (mut old_file, mut new_file, mut compare_file) = get_output_files(config);
+    let (mut old_file, mut new_file, mut compare_file) = get_output_files(&config);
     let mut index: u64 = 0;
     let mut pos: u64 = 0;
     let mut neg: u64 = 0;
@@ -92,7 +92,7 @@ fn decode_to_log_content(line: &str) -> anyhow::Result<LogContent> {
     return Err(format_err!("Fail to parse into json"));
 }
 
-fn get_output_files(config: Config) -> (File, File, File) {
+fn get_output_files(config: &Config) -> (File, File, File) {
     let old = OpenOptions::new().create(true).write(true).append(true).open(config.old_res_path.as_str()).unwrap();
     let new = OpenOptions::new().create(true).write(true).append(true).open(config.new_res_path.as_str()).unwrap();
     let compare = OpenOptions::new().create(true).write(true).append(true).open(config.compare_res_path.as_str()).unwrap();
