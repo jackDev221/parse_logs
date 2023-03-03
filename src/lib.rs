@@ -1,16 +1,15 @@
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use anyhow::format_err;
-use log::info;
+use log::{info, warn};
 use serde_json::Value;
-use types::{LogContent, RouterResult};
 
 mod utils;
 mod client;
 mod types;
 
 pub use client::client::RouterApiClient;
-pub use types::Config;
+pub use types::{Config, LogContent, RouterResult, CompareResult};
 pub use utils::init_log;
 
 const SWAP_ROUTING_FLAG: &str = "request-swap-routingInV2";
@@ -22,18 +21,54 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let reader = BufReader::new(file);
     let (mut old_file, mut new_file, mut compare_file) = get_output_files(config);
     let mut index: u64 = 0;
+    let mut pos: u64 = 0;
+    let mut neg: u64 = 0;
+    let _ = compare_file.write_all("-------------------------Detail-----------------------\n".as_bytes());
     for line in reader.lines() {
         let line_content = line?;
         if !line_content.contains(SWAP_ROUTING_FLAG) {
             continue;
         }
         let log_content = decode_to_log_content(&line_content)?;
-        let old_res = client.call_old_router(&log_content).await?;
-        let new_res = client.call_new_router(&log_content).await?;
-        save_results(index, &old_res, &new_res, &mut old_file, &mut new_file, &mut compare_file);
-        index += 1;
+        if let Ok((old_res, new_res)) = call_router_servers(client, &log_content).await {
+            let (res, diff_amount, _) = save_results(
+                index,
+                &old_res,
+                &new_res,
+                &mut old_file,
+                &mut new_file,
+                &mut compare_file,
+            );
+            if res {
+                if diff_amount >= 0.0 {
+                    pos += 1;
+                } else {
+                    neg += 1;
+                }
+            }
+            index += 1;
+        } else {
+            warn!("Fail to get response for {}", line_content);
+        }
     }
+    let _ = compare_file.write_all("\n-------------------------Result-----------------------\n".as_bytes());
+    let compare_res = format!(
+        "Result: pos:{}, neg:{}\n",
+        pos,
+        neg)
+        ;
+    let _ = compare_file.write_all(compare_res.as_bytes());
+
     Ok(())
+}
+
+async fn call_router_servers(
+    client: &mut RouterApiClient,
+    log_content: &LogContent,
+) -> anyhow::Result<(RouterResult, RouterResult)> {
+    let old_res = client.call_old_router(log_content).await?;
+    let new_res = client.call_new_router(log_content).await?;
+    Ok((old_res, new_res))
 }
 
 fn decode_to_log_content(line: &str) -> anyhow::Result<LogContent> {
@@ -67,23 +102,24 @@ fn save_results(
     new: &RouterResult,
     old_res: &mut File,
     new_res: &mut File,
-    compare_res: &mut File) {
+    compare_res: &mut File) -> (bool, f64, f64) {
     let old_str = serde_json::to_string(old).unwrap();
     let new_str = serde_json::to_string(new).unwrap();
-    let _ = old_res.write_all(format!("{}:{}\n", index, old_str).as_bytes());
-    let _ = new_res.write_all(format!("{}:{}\n", index, new_str).as_bytes());
+    let _ = old_res.write_all(format!("{}: {}\n", index, old_str).as_bytes());
+    let _ = new_res.write_all(format!("{}: {}\n", index, new_str).as_bytes());
     if old.data.is_some() && new.data.is_some() {
         let item_old = old.data.as_ref().unwrap().get(0).unwrap();
         let item_new = new.data.as_ref().unwrap().get(0).unwrap();
+        let compare = CompareResult::gen_from_paths(item_old, item_new);
+
         let compare_str = format!(
-            "{} old:{}/{},new:{}/{}\n",
+            "{}: {}\n",
             index,
-            item_old.amount,
-            item_old.fee,
-            item_new.amount,
-            item_new.fee
+            serde_json::to_string(&compare).expect("compare fail  to json string")
         );
         let _ = compare_res.write_all(compare_str.as_bytes());
+        return (true, compare.diff_amount, compare.diff_fee);
     }
+    (false, 0.0, 0.0)
 }
 

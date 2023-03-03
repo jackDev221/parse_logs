@@ -64,6 +64,41 @@ pub struct Config {
     pub use_base_tokens: String,
 }
 
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CompareResult {
+    #[serde(rename = "OldAmount")]
+    pub old_amount: String,
+    #[serde(rename = "OldFee")]
+    pub old_fee: String,
+    #[serde(rename = "newAmount")]
+    pub new_amount: String,
+    #[serde(rename = "newFee")]
+    pub new_fee: String,
+    #[serde(rename = "diffAmount")]
+    pub diff_amount: f64,
+    #[serde(rename = "diffFee")]
+    pub diff_fee: f64,
+}
+
+impl CompareResult {
+    pub fn gen_from_paths(old: &Path, new: &Path) -> Self {
+        let old_amount_f = old.amount.parse::<f64>().expect("parse to f64");
+        let old_fee_f = old.fee.parse::<f64>().expect("parse to f64");
+        let new_amount_f = new.amount.parse::<f64>().expect("parse to f64");
+        let new_fee_f = new.fee.parse::<f64>().expect("parse to f64");
+
+        Self {
+            old_amount: old.amount.clone(),
+            old_fee: old.fee.clone(),
+            new_amount: new.amount.clone(),
+            new_fee: new.fee.clone(),
+            diff_amount: new_amount_f - old_amount_f,
+            diff_fee: new_fee_f - old_fee_f,
+        }
+    }
+}
+
 impl Config {
     pub fn from_file(path: &str) -> Self {
         let content =
