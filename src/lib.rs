@@ -25,6 +25,9 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut neg: u64 = 0;
     let _ = compare_file.write_all("-------------------------Detail-----------------------\n".as_bytes());
     for line in reader.lines() {
+        if index >= config.max_count {
+            break;
+        }
         let line_content = line?;
         if !line_content.contains(SWAP_ROUTING_FLAG) {
             continue;
@@ -103,23 +106,23 @@ fn save_results(
     old_res: &mut File,
     new_res: &mut File,
     compare_res: &mut File) -> (bool, f64, f64) {
+    let item_old = old.data.as_ref().unwrap().get(0).unwrap();
+    let item_new = new.data.as_ref().unwrap().get(0).unwrap();
+    if item_old.amount.is_none() {
+        return (false, 0.0, 0.0);
+    }
     let old_str = serde_json::to_string(old).unwrap();
     let new_str = serde_json::to_string(new).unwrap();
     let _ = old_res.write_all(format!("{}: {}\n", index, old_str).as_bytes());
     let _ = new_res.write_all(format!("{}: {}\n", index, new_str).as_bytes());
-    if old.data.is_some() && new.data.is_some() {
-        let item_old = old.data.as_ref().unwrap().get(0).unwrap();
-        let item_new = new.data.as_ref().unwrap().get(0).unwrap();
-        let compare = CompareResult::gen_from_paths(item_old, item_new);
+    let compare = CompareResult::gen_from_paths(item_old, item_new);
 
-        let compare_str = format!(
-            "{}: {}\n",
-            index,
-            serde_json::to_string(&compare).expect("compare fail  to json string")
-        );
-        let _ = compare_res.write_all(compare_str.as_bytes());
-        return (true, compare.diff_amount, compare.diff_fee);
-    }
-    (false, 0.0, 0.0)
+    let compare_str = format!(
+        "{}: {}\n",
+        index,
+        serde_json::to_string(&compare).expect("compare fail  to json string")
+    );
+    let _ = compare_res.write_all(compare_str.as_bytes());
+    return (true, compare.diff_amount, compare.diff_fee);
 }
 

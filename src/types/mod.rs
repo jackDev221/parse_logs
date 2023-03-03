@@ -29,21 +29,21 @@ pub struct RouterResult {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Path {
     #[serde(rename = "amount")]
-    pub amount: String,
+    pub amount: Option<String>,
     #[serde(rename = "fee")]
-    pub fee: String,
+    pub fee: Option<String>,
     #[serde(rename = "impact")]
-    pub impact: String,
+    pub impact: Option<String>,
     #[serde(rename = "inUsd")]
-    pub in_usd: String,
+    pub in_usd: Option<String>,
     #[serde(rename = "outUsd")]
-    pub out_usd: String,
+    pub out_usd: Option<String>,
     #[serde(rename = "pool")]
-    pub pool: Vec<String>,
+    pub pool: Option<Vec<String>>,
     #[serde(rename = "roadForAddr")]
-    pub road_for_addr: Vec<String>,
+    pub road_for_addr: Option<Vec<String>>,
     #[serde(rename = "roadForName")]
-    pub road_for_name: Vec<String>,
+    pub road_for_name: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -62,6 +62,8 @@ pub struct Config {
     pub compare_res_path: String,
     #[serde(rename = "useBaseTokens")]
     pub use_base_tokens: String,
+    #[serde(rename = "maxCount")]
+    pub max_count: u64,
 }
 
 
@@ -83,16 +85,16 @@ pub struct CompareResult {
 
 impl CompareResult {
     pub fn gen_from_paths(old: &Path, new: &Path) -> Self {
-        let old_amount_f = old.amount.parse::<f64>().expect("parse to f64");
-        let old_fee_f = old.fee.parse::<f64>().expect("parse to f64");
-        let new_amount_f = new.amount.parse::<f64>().expect("parse to f64");
-        let new_fee_f = new.fee.parse::<f64>().expect("parse to f64");
+        let old_amount_f = old.amount.clone().unwrap().parse::<f64>().expect("parse to f64");
+        let old_fee_f = old.fee.clone().unwrap().parse::<f64>().expect("parse to f64");
+        let new_amount_f = new.clone().amount.unwrap().parse::<f64>().expect("parse to f64");
+        let new_fee_f = new.clone().fee.unwrap().parse::<f64>().expect("parse to f64");
 
         Self {
-            old_amount: old.amount.clone(),
-            old_fee: old.fee.clone(),
-            new_amount: new.amount.clone(),
-            new_fee: new.fee.clone(),
+            old_amount: old.clone().amount.unwrap().clone(),
+            old_fee: old.clone().fee.unwrap().clone(),
+            new_amount: new.clone().amount.unwrap().clone(),
+            new_fee: new.clone().fee.unwrap().clone(),
             diff_amount: new_amount_f - old_amount_f,
             diff_fee: new_fee_f - old_fee_f,
         }
