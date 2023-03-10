@@ -44,6 +44,8 @@ pub struct Path {
     pub road_for_addr: Option<Vec<String>>,
     #[serde(rename = "roadForName")]
     pub road_for_name: Option<Vec<String>>,
+    #[serde(default)]
+    pub cast: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -85,6 +87,8 @@ pub struct CompareResult {
     pub diff_fee: f64,
     #[serde(rename = "diffAmountPer")]
     pub diff_amount_per: f64,
+    #[serde(rename = "cast")]
+    pub cast: u32,
 }
 
 
@@ -114,6 +118,7 @@ impl CompareResult {
             diff_amount: new_amount_f - old_amount_f,
             diff_fee: new_fee_f - old_fee_f,
             diff_amount_per,
+            cast: new.cast,
         }
     }
 }

@@ -24,6 +24,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut pos: u64 = 0;
     let mut neg: u64 = 0;
     let mut diff_pers: Vec<f64> = vec![0.0; 8];
+    let mut sum_cast: u32 = 0;
     let _ = compare_detail_file.write_all("-------------------------Detail-----------------------\n".as_bytes());
     for line in reader.lines() {
         if index >= config.max_count {
@@ -35,7 +36,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
         }
         let log_content = decode_to_log_content(&line_content)?;
         if let Ok((old_res, new_res)) = call_router_servers(client, &log_content).await {
-            let (res, diff_amount, _, diff_amount_per) = save_results(
+            let (res, diff_amount, _, diff_amount_per, cast) = save_results(
                 index,
                 &old_res,
                 &new_res,
@@ -50,6 +51,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
                 } else {
                     neg += 1;
                 }
+                sum_cast += cast;
             }
             index += 1;
         } else {
@@ -63,6 +65,12 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
         neg);
     let _ = compare_file.write_all(compare_res.as_bytes());
     let _ = compare_file.write_all(compare_res_to_string(&mut diff_pers).as_bytes());
+    let cast_per: f64 = sum_cast as f64 / (pos as f64 + neg as f64);
+    let cast_res = format!(
+        "Result: cast:{}\n",
+        cast_per);
+    let _ = compare_file.write_all(cast_res.as_bytes());
+
     Ok(())
 }
 
@@ -162,11 +170,11 @@ fn save_results(
     new: &RouterResult,
     old_res: &mut File,
     new_res: &mut File,
-    compare_res: &mut File) -> (bool, f64, f64, f64) {
+    compare_res: &mut File) -> (bool, f64, f64, f64, u32) {
     let item_old = old.data.as_ref().unwrap().get(0).unwrap();
     let item_new = new.data.as_ref().unwrap().get(0).unwrap();
     if item_old.amount.is_none() {
-        return (false, 0.0, 0.0, 0.0);
+        return (false, 0.0, 0.0, 0.0, 0);
     }
     let old_str = serde_json::to_string(old).unwrap();
     let new_str = serde_json::to_string(new).unwrap();
@@ -180,6 +188,6 @@ fn save_results(
         serde_json::to_string(&compare).expect("compare fail  to json string")
     );
     let _ = compare_res.write_all(compare_str.as_bytes());
-    return (true, compare.diff_amount, compare.diff_fee, compare.diff_amount_per);
+    return (true, compare.diff_amount, compare.diff_fee, compare.diff_amount_per, compare.cast);
 }
 
