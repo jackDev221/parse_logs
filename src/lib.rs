@@ -108,15 +108,15 @@ fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
     diff_pers[7] /= count;
 
     format!(
-        "count:{}, diff <0.01%: {},  0.01%~0.1%:{}, 0.1%~1%:{}, 1%~2%:{}, 2%~5%:{}, 5%~10%:{}, >10%:{}",
+        "count:{}, diff <0.01%: {}%,  0.01%~0.1%:{}%, 0.1%~1%:{}%, 1%~2%:{}%, 2%~5%:{}%, 5%~10%:{}%, >10%:{}%",
         count,
-        diff_pers[0] * 100,
-        diff_pers[2] * 100,
-        diff_pers[3] * 100,
-        diff_pers[4] * 100,
-        diff_pers[5] * 100,
-        diff_pers[6] * 100,
-        diff_pers[7] * 100,
+        diff_pers[0] * 100.0,
+        diff_pers[2] * 100.0,
+        diff_pers[3] * 100.0,
+        diff_pers[4] * 100.0,
+        diff_pers[5] * 100.0,
+        diff_pers[6] * 100.0,
+        diff_pers[7] * 100.0,
     )
 }
 
