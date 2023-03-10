@@ -23,7 +23,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut index: u64 = 0;
     let mut pos: u64 = 0;
     let mut neg: u64 = 0;
-    let mut diff_pers: Vec<f64> = vec![0.0; 4];
+    let mut diff_pers: Vec<f64> = vec![0.0; 8];
     let _ = compare_detail_file.write_all("-------------------------Detail-----------------------\n".as_bytes());
     for line in reader.lines() {
         if index >= config.max_count {
@@ -80,7 +80,20 @@ fn calc_compare_res(diff_pers: &mut Vec<f64>, diff_per: f64) {
         diff_pers[2] += 1.0;
         return;
     }
-    diff_pers[3] += 1.0;
+    if 0.01 <= diff_per && diff_per < 0.02 {
+        diff_pers[3] += 1.0;
+        return;
+    }
+    if 0.02 <= diff_per && diff_per < 0.05 {
+        diff_pers[4] += 1.0;
+        return;
+    }
+
+    if 0.05 <= diff_per && diff_per < 0.1 {
+        diff_pers[5] += 1.0;
+        return;
+    }
+    diff_pers[6] += 1.0;
 }
 
 fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
@@ -89,14 +102,21 @@ fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
     diff_pers[1] /= count;
     diff_pers[2] /= count;
     diff_pers[3] /= count;
+    diff_pers[4] /= count;
+    diff_pers[5] /= count;
+    diff_pers[6] /= count;
+    diff_pers[7] /= count;
 
     format!(
-        "count:{}, diff <0.01%: {},  0.01%~0.1%:{}, 0.1%~1%:{}, >1%:{}",
+        "count:{}, diff <0.01%: {},  0.01%~0.1%:{}, 0.1%~1%:{}, 1%~2%:{}, 2%~5%:{}, 5%~10%:{}, >10%:{}",
         count,
-        diff_pers[0],
-        diff_pers[1],
-        diff_pers[2],
-        diff_pers[3]
+        diff_pers[0] * 100,
+        diff_pers[2] * 100,
+        diff_pers[3] * 100,
+        diff_pers[4] * 100,
+        diff_pers[5] * 100,
+        diff_pers[6] * 100,
+        diff_pers[7] * 100,
     )
 }
 
