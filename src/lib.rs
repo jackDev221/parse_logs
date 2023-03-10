@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use anyhow::format_err;
@@ -16,6 +17,7 @@ const SWAP_ROUTING_FLAG: &str = "request-swap-routingInV2";
 const GRAFANA_INFO_FLAG: &str = "--GRAFANA_INFO--";
 const LOG_CONTENT_FLAG: &str = "logContent";
 
+
 pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyhow::Result<()> {
     let file = File::open(config.log_file_path.as_str())?;
     let reader = BufReader::new(file);
@@ -24,8 +26,10 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut pos: u64 = 0;
     let mut neg: u64 = 0;
     let mut diff_pers: Vec<f64> = vec![0.0; 8];
-    let mut sum_cast: u32 = 0;
-    let mut cast_number = 0;
+    let mut token_pair_maps = HashMap::new();
+
+    let mut path_size_pass: Vec<i64> = vec![0; 5];
+    let mut path_size_count: Vec<i64> = vec![0; 5];
     let _ = compare_detail_file.write_all("-------------------------Detail-----------------------\n".as_bytes());
     for line in reader.lines() {
         if index >= config.max_count {
@@ -36,8 +40,16 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
             continue;
         }
         let log_content = decode_to_log_content(&line_content)?;
-        if let Ok((old_res, new_res)) = call_router_servers(client, &log_content).await {
-            let (res, diff_amount, _, diff_amount_per, cast) = save_results(
+
+        let key = format!("{}_{}", log_content.from_token, log_content.to_token);
+        if token_pair_maps.contains_key(&key) {
+            continue;
+        } else {
+            token_pair_maps.insert(key.clone(), key);
+        }
+
+        if let Ok((old_res, new_res, cast)) = call_router_servers(client, &log_content).await {
+            let (res, diff_amount, _, diff_amount_per, path_size) = save_results(
                 index,
                 &old_res,
                 &new_res,
@@ -52,12 +64,9 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
                 } else {
                     neg += 1;
                 }
-                if cast > 5 {
-                    sum_cast += cast;
-                    cast_number += 1;
-                }
             }
             index += 1;
+            update_clc_paths(&mut path_size_pass, &mut path_size_count, cast, path_size);
         } else {
             warn!("Fail to get response for {}", line_content);
         }
@@ -69,13 +78,53 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
         neg);
     let _ = compare_file.write_all(compare_res.as_bytes());
     let _ = compare_file.write_all(compare_res_to_string(&mut diff_pers).as_bytes());
-    let cast_per: f64 = sum_cast as f64 / (cast_number as f64);
-    let cast_res = format!(
-        "Result: cast num:{} sum:{}  per:{}\n", sum_cast, cast_number,
-        cast_per);
+    let cast_res = clc_path_to_string(&mut path_size_pass, &mut path_size_count);
     let _ = compare_file.write_all(cast_res.as_bytes());
 
     Ok(())
+}
+
+
+fn update_clc_paths(path_size_pass: &mut Vec<i64>, path_size_count: &mut Vec<i64>, cast: i64, size: u32) {
+    let index;
+    if size < 50 {
+        index = 0;
+    } else if 50 <= size && size < 150 {
+        index = 1;
+    } else if 150 <= size && size < 300 {
+        index = 2;
+    } else if 300 <= size && size < 600 {
+        index = 3;
+    } else {
+        index = 4;
+    }
+    path_size_pass[index] += cast;
+    path_size_count[index] += 1;
+}
+
+fn clc_path_to_string(path_size_pass: &mut Vec<i64>, path_size_count: &mut Vec<i64>) -> String {
+    let sum_count: i64 = path_size_count.iter().sum();
+    let sum_pass: i64 = path_size_pass.iter().sum();
+    let per_pass = sum_pass as f64 / sum_count as f64;
+    let mut pass_res = vec![0.0; 5];
+    for i in 0..5 {
+        pass_res[i] = path_size_pass[i] as f64 / path_size_count[i] as f64;
+    }
+
+
+    format!(
+        "Path size [0, 50)  num: {} per Cast:{} \n \
+        Path size [50, 150) num: {} per Cast:{} \n \
+        Path size [150, 300) num: {} per Cast:{} \n\
+        Path size [300, 600) num: {} per Cast:{} \n \
+        Path size [600, ....) num: {} per Cast:{} \n  Sum per :{}",
+        path_size_count[0], pass_res[0],
+        path_size_count[1], pass_res[1],
+        path_size_count[2], pass_res[2],
+        path_size_count[3], pass_res[3],
+        path_size_count[4], pass_res[4],
+        per_pass
+    )
 }
 
 
@@ -136,10 +185,12 @@ fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
 async fn call_router_servers(
     client: &mut RouterApiClient,
     log_content: &LogContent,
-) -> anyhow::Result<(RouterResult, RouterResult)> {
+) -> anyhow::Result<(RouterResult, RouterResult, i64)> {
     let old_res = client.call_old_router(log_content).await?;
+    let t0 = chrono::Utc::now().timestamp();
     let new_res = client.call_new_router(log_content).await?;
-    Ok((old_res, new_res))
+    let t1 = chrono::Utc::now().timestamp();
+    Ok((old_res, new_res, t1 - t0))
 }
 
 fn decode_to_log_content(line: &str) -> anyhow::Result<LogContent> {
