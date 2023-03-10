@@ -25,6 +25,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut neg: u64 = 0;
     let mut diff_pers: Vec<f64> = vec![0.0; 8];
     let mut sum_cast: u32 = 0;
+    let mut cast_number = 0;
     let _ = compare_detail_file.write_all("-------------------------Detail-----------------------\n".as_bytes());
     for line in reader.lines() {
         if index >= config.max_count {
@@ -51,7 +52,10 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
                 } else {
                     neg += 1;
                 }
-                sum_cast += cast;
+                if cast > 5 {
+                    sum_cast += cast;
+                    cast_number += 1;
+                }
             }
             index += 1;
         } else {
@@ -65,9 +69,9 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
         neg);
     let _ = compare_file.write_all(compare_res.as_bytes());
     let _ = compare_file.write_all(compare_res_to_string(&mut diff_pers).as_bytes());
-    let cast_per: f64 = sum_cast as f64 / (pos as f64 + neg as f64);
+    let cast_per: f64 = sum_cast as f64 / (cast_number as f64);
     let cast_res = format!(
-        "Result: cast:{}\n",
+        "Result: cast num:{} sum:{}  per:{}\n", sum_cast, cast_number,
         cast_per);
     let _ = compare_file.write_all(cast_res.as_bytes());
 
@@ -116,7 +120,7 @@ fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
     diff_pers[7] /= count;
 
     format!(
-        "count:{}, diff <0.01%: {}%,  0.01%~0.1%:{}%, 0.1%~1%:{}%, 1%~2%:{}%, 2%~5%:{}%, 5%~10%:{}%, >10%:{}%",
+        "count:{}, diff <0.01%: {}%,  0.01%~0.1%:{}%, 0.1%~1%:{}%, 1%~2%:{}%, 2%~5%:{}%, 5%~10%:{}%, >10%:{}%\n",
         count,
         diff_pers[0] * 100.0,
         diff_pers[2] * 100.0,
