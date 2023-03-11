@@ -113,11 +113,11 @@ fn clc_path_to_string(path_size_pass: &mut Vec<i64>, path_size_count: &mut Vec<i
 
 
     format!(
-        "Path size [0, 50)  num: {} per Cast:{} \n \
-        Path size [50, 150) num: {} per Cast:{} \n \
-        Path size [150, 300) num: {} per Cast:{} \n\
-        Path size [300, 600) num: {} per Cast:{} \n \
-        Path size [600, ....) num: {} per Cast:{} \n  Sum per :{}",
+        "Path size [0, 50)  num: {} per Cast:{} \n\
+         Path size [50, 150) num: {} per Cast:{} \n\
+         Path size [150, 300) num: {} per Cast:{} \n\
+         Path size [300, 600) num: {} per Cast:{} \n\
+         Path size [600, ....) num: {} per Cast:{} \nSum per :{}",
         path_size_count[0], pass_res[0],
         path_size_count[1], pass_res[1],
         path_size_count[2], pass_res[2],
@@ -129,45 +129,30 @@ fn clc_path_to_string(path_size_pass: &mut Vec<i64>, path_size_count: &mut Vec<i
 
 
 fn calc_compare_res(diff_pers: &mut Vec<f64>, diff_per: f64) {
+    let index;
     if diff_per < 0.0001 {
-        diff_pers[0] += 1.0;
-        return;
+        index = 0;
+    } else if 0.0001 <= diff_per && diff_per < 0.001 {
+        index = 1;
+    } else if 0.001 <= diff_per && diff_per < 0.01 {
+        index = 2;
+    } else if 0.01 <= diff_per && diff_per < 0.02 {
+        index = 3;
+    } else if 0.02 <= diff_per && diff_per < 0.05 {
+        index = 4;
+    } else if 0.05 <= diff_per && diff_per < 0.1 {
+        index = 5;
+    } else {
+        index = 6
     }
-    if 0.0001 <= diff_per && diff_per < 0.001 {
-        diff_pers[1] += 1.0;
-        return;
-    }
-    if 0.001 <= diff_per && diff_per < 0.01 {
-        diff_pers[2] += 1.0;
-        return;
-    }
-    if 0.01 <= diff_per && diff_per < 0.02 {
-        diff_pers[3] += 1.0;
-        return;
-    }
-    if 0.02 <= diff_per && diff_per < 0.05 {
-        diff_pers[4] += 1.0;
-        return;
-    }
-
-    if 0.05 <= diff_per && diff_per < 0.1 {
-        diff_pers[5] += 1.0;
-        return;
-    }
-    diff_pers[6] += 1.0;
+    diff_pers[index] += 1.0;
 }
 
 fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
     let count: f64 = diff_pers.iter().sum();
-    diff_pers[0] /= count;
-    diff_pers[1] /= count;
-    diff_pers[2] /= count;
-    diff_pers[3] /= count;
-    diff_pers[4] /= count;
-    diff_pers[5] /= count;
-    diff_pers[6] /= count;
-    diff_pers[7] /= count;
-
+    for i in 0..diff_pers.len() {
+        diff_pers[i] /= count;
+    }
     format!(
         "count:{}, diff <0.01%: {}%,  0.01%~0.1%:{}%, 0.1%~1%:{}%, 1%~2%:{}%, 2%~5%:{}%, 5%~10%:{}%, >10%:{}%\n",
         count,
@@ -187,9 +172,9 @@ async fn call_router_servers(
     log_content: &LogContent,
 ) -> anyhow::Result<(RouterResult, RouterResult, i64)> {
     let old_res = client.call_old_router(log_content).await?;
-    let t0 = chrono::Utc::now().timestamp();
+    let t0 = chrono::Utc::now().timestamp_millis();
     let new_res = client.call_new_router(log_content).await?;
-    let t1 = chrono::Utc::now().timestamp();
+    let t1 = chrono::Utc::now().timestamp_millis();
     Ok((old_res, new_res, t1 - t0))
 }
 
@@ -243,6 +228,6 @@ fn save_results(
         serde_json::to_string(&compare).expect("compare fail  to json string")
     );
     let _ = compare_res.write_all(compare_str.as_bytes());
-    return (true, compare.diff_amount, compare.diff_fee, compare.diff_amount_per, compare.cast);
+    return (true, compare.diff_amount, compare.diff_fee, compare.diff_amount_per, compare.paths);
 }
 
