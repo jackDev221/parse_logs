@@ -75,6 +75,7 @@ impl RouterApiClient {
     }
 
     async fn call_router(&self, url: &Url) -> anyhow::Result<RouterResult> {
+        println!("{}", url.to_string());
         let operation = || async {
             let response = self
                 .http_client

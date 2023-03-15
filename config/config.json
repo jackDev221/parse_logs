@@ -1,11 +1,9 @@
 {
-  "oldUrl": "",
-  "newUrl": "",
-  "logFilePath": "",
-  "oldResPath": "",
-  "newResPath": "",
-  "compareResPath": "",
-  "compareResDetailPath": "",
-  "useBaseTokens": "",
+  "oldUrl": "https://rot.endjgfsv.link/swap/routingInV2",
+  "newUrl": "https://sunio-test-router.endjgfsv.link/gray/routingInV2",
+  "logFilePath": "/Users/lvbin/Person/tron.log",
+  "compareResPath": "./res/compare",
+  "compareResDetailPath": "./res/compare_d",
+  "useBaseTokens": "true",
   "maxCount": 100
 }

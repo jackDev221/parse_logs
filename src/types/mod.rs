@@ -44,10 +44,10 @@ pub struct Path {
     pub road_for_addr: Option<Vec<String>>,
     #[serde(rename = "roadForName")]
     pub road_for_name: Option<Vec<String>>,
-    #[serde(default)]
-    pub cast: u32,
-    #[serde(default)]
-    pub paths:u32,
+    // #[serde(default)]
+    // pub cast: u32,
+    // #[serde(default)]
+    // pub paths:u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -58,10 +58,6 @@ pub struct Config {
     pub new_url: String,
     #[serde(rename = "logFilePath")]
     pub log_file_path: String,
-    #[serde(rename = "oldResPath")]
-    pub old_res_path: String,
-    #[serde(rename = "newResPath")]
-    pub new_res_path: String,
     #[serde(rename = "compareResDetailPath")]
     pub compare_res_detail_path: String,
     #[serde(rename = "compareResPath")]
@@ -72,60 +68,60 @@ pub struct Config {
     pub max_count: u64,
 }
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CompareResult {
-    #[serde(rename = "OldAmount")]
-    pub old_amount: String,
-    #[serde(rename = "OldFee")]
-    pub old_fee: String,
-    #[serde(rename = "newAmount")]
-    pub new_amount: String,
-    #[serde(rename = "newFee")]
-    pub new_fee: String,
-    #[serde(rename = "diffAmount")]
-    pub diff_amount: f64,
-    #[serde(rename = "diffFee")]
-    pub diff_fee: f64,
+    #[serde(rename = "diffFeePer")]
+    pub diff_fee_per: f64,
     #[serde(rename = "diffAmountPer")]
     pub diff_amount_per: f64,
-    #[serde(rename = "cast")]
-    pub cast: u32,
-    #[serde(rename = "paths")]
-    pub paths: u32,
+    #[serde(rename = "diffImpactPer")]
+    pub diff_impact_per: f64,
+    #[serde(rename = "diffInusdPer")]
+    pub diff_inusd_per: f64,
+    #[serde(rename = "diffoutusdPer")]
+    pub diff_outusd_per: f64,
+    #[serde(rename = "poolEq")]
+    pub pool_eq: bool,
+    #[serde(rename = "roadForAddrEq")]
+    pub road_addr_eq: bool,
 }
 
-
-#[test]
-fn ddd() {
-    let a = "{\"message\":\"SUCCESS\",\"code\":0,\"data\":[{\"roadForName\":[\"USDT\",\"USDC\",\"TRX\",\"WIN\"],\"roadForAddr\":[\"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t\",\"TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8\",\"T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb\",\"TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7\"],\"pool\":[\"2pool\",\"v1\",\"v1\"],\"impact\":\"0\",\"inUsd\":\"2000.261200000000000000\",\"outUsd\":\"5095.618873804798099876\",\"amount\":\"52931162.224478\",\"fee\":\"12.280203\"},{\"roadForName\":[\"USDT\",\"USDC\",\"USDT\",\"WIN\"],\"roadForAddr\":[\"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t\",\"TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8\",\"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t\",\"TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7\"],\"pool\":[\"2pool\",\"v2\",\"v2\"],\"impact\":\"0\",\"inUsd\":\"2000.261200000000000000\",\"outUsd\":\"5084.892183428953612249\",\"amount\":\"52819737.841596\",\"fee\":\"12.280203\"},{\"roadForName\":[\"USDT\",\"WIN\"],\"roadForAddr\":[\"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t\",\"TLa2f6VPqDgRE67v1736s7bJ8Ray5wYjU7\"],\"pool\":[\"v2\"],\"impact\":\"0\",\"inUsd\":\"2000.261200000000000000\",\"outUsd\":\"1992.415564461089408943\",\"amount\":\"20696381.356779\",\"fee\":\"6.000001\"}]}";
-    let aa: RouterResult = serde_json::from_str(a).unwrap();
-    print!("{:?}", aa);
-}
 
 impl CompareResult {
-    pub fn gen_from_paths(old: &Path, new: &Path) -> Self {
-        let old_amount_f = old.amount.clone().unwrap().parse::<f64>().expect("parse to f64");
-        let old_fee_f = old.fee.clone().unwrap().parse::<f64>().expect("parse to f64");
-        let new_amount_f = new.clone().amount.unwrap().parse::<f64>().expect("parse to f64");
-        let new_fee_f = new.clone().fee.unwrap().parse::<f64>().expect("parse to f64");
-        let mut diff_amount_per = (new_amount_f - old_amount_f) / old_amount_f;
-        if diff_amount_per < 0.0 {
-            diff_amount_per *= -1.0;
+    pub fn gen_from_paths(old: &Path, new: &Path) -> Option<Self> {
+        if old.amount.is_none() {
+            return None;
         }
-
-        Self {
-            old_amount: old.clone().amount.unwrap().clone(),
-            old_fee: old.clone().fee.unwrap().clone(),
-            new_amount: new.clone().amount.unwrap().clone(),
-            new_fee: new.clone().fee.unwrap().clone(),
-            diff_amount: new_amount_f - old_amount_f,
-            diff_fee: new_fee_f - old_fee_f,
-            diff_amount_per,
-            cast: new.cast,
-            paths: new.paths,
-        }
+        let diff_amount_per = clac_string_per(old.amount.clone().unwrap(), new.amount.clone().unwrap());
+        let diff_fee_per = clac_string_per(old.fee.clone().unwrap(), new.fee.clone().unwrap());
+        let diff_impact_per = clac_string_per(old.impact.clone().unwrap(), new.impact.clone().unwrap());
+        let diff_inusd_per = clac_string_per(old.in_usd.clone().unwrap(), new.in_usd.clone().unwrap());
+        let diff_outusd_per = clac_string_per(old.out_usd.clone().unwrap(), new.out_usd.clone().unwrap());
+        let pool_eq = old.pool.clone().unwrap().eq(&new.pool.clone().unwrap());
+        let road_addr_eq = old.road_for_addr.clone().unwrap().eq(&new.road_for_addr.clone().unwrap());
+        Some(
+            Self {
+                diff_fee_per,
+                diff_amount_per,
+                diff_impact_per,
+                diff_inusd_per,
+                diff_outusd_per,
+                pool_eq,
+                road_addr_eq,
+            }
+        )
     }
+}
+
+
+fn clac_string_per(a: String, b: String) -> f64 {
+    let a_f = a.parse::<f64>().expect("parse to f6");
+    let b_f = b.parse::<f64>().expect("parse to f6");
+    clac_per(a_f, b_f)
+}
+
+fn clac_per(a: f64, b: f64) -> f64 {
+    (a - b) / a.abs()
 }
 
 impl Config {
