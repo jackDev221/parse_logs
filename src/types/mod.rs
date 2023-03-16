@@ -121,7 +121,7 @@ fn clac_string_per(a: String, b: String) -> f64 {
 }
 
 fn clac_per(a: f64, b: f64) -> f64 {
-    (a - b) / a.abs()
+    ((a - b) / a).abs()
 }
 
 impl Config {

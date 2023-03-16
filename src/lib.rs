@@ -28,6 +28,11 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut diff_impact_pers = init_diff_pers();
     let mut diff_inusd_pers = init_diff_pers();
     let mut diff_ount_pers = init_diff_pers();
+    let mut sum_diff_amount_pers = init_diff_pers();
+    let mut sum_diff_fee_pers = init_diff_pers();
+    let mut sum_diff_impact_pers = init_diff_pers();
+    let mut sum_diff_inusd_pers = init_diff_pers();
+    let mut sum_diff_ount_pers = init_diff_pers();
     let mut count_paths: Vec<Vec<f64>> = vec![];
     count_paths.push(vec![0.0; 2]);
     count_paths.push(vec![0.0; 2]);
@@ -74,6 +79,11 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
                 } else {
                     count_paths[i][0] += 1.0;
                 }
+                calc_compare_res(&mut sum_diff_amount_pers[i], com_res.diff_amount_per);
+                calc_compare_res(&mut sum_diff_fee_pers[i], com_res.diff_fee_per);
+                calc_compare_res(&mut sum_diff_impact_pers[i], com_res.diff_impact_per);
+                calc_compare_res(&mut sum_diff_inusd_pers[i], com_res.diff_inusd_per);
+                calc_compare_res(&mut sum_diff_ount_pers[i], com_res.diff_outusd_per);
             }
             index += 1;
         } else {
@@ -86,6 +96,13 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     write_compare_result("Inusd".to_owned(), &mut diff_inusd_pers, &mut compare_file);
     write_compare_result("Outusd".to_owned(), &mut diff_ount_pers, &mut compare_file);
     write_paths(&mut count_paths, &mut compare_file);
+
+    let _ = compare_file.write_all("-------------------以下忽视路径是否相同，只是对比兑换出值-----------------------------\n".as_bytes());
+    write_compare_result("Sum Amount".to_owned(), &mut sum_diff_amount_pers, &mut compare_file);
+    write_compare_result("Sum Fee".to_owned(), &mut sum_diff_fee_pers, &mut compare_file);
+    write_compare_result("Sum impact".to_owned(), &mut sum_diff_impact_pers, &mut compare_file);
+    write_compare_result("Sum Inusd".to_owned(), &mut sum_diff_inusd_pers, &mut compare_file);
+    write_compare_result("Sum Outusd".to_owned(), &mut sum_diff_ount_pers, &mut compare_file);
     Ok(())
 }
 
@@ -286,9 +303,9 @@ fn compare_results(
     let mut res: Vec<CompareResult> = vec![];
     for i in 0..size {
         let old_path = old_paths.get(i).unwrap();
-        let new_path = old_paths.get(i).unwrap();
+        let new_path = new_paths.get(i).unwrap();
         let compare_op = CompareResult::gen_from_paths(old_path, new_path);
-        if compare_op.is_none(){
+        if compare_op.is_none() {
             break;
         }
         let compare = compare_op.unwrap();
