@@ -89,7 +89,7 @@ pub struct CompareResult {
 
 impl CompareResult {
     pub fn gen_from_paths(old: &Path, new: &Path) -> Option<Self> {
-        if old.amount.is_none() {
+        if old.amount.is_none() || new.amount.is_none() {
             return None;
         }
         let diff_amount_per = clac_string_per(old.amount.clone().unwrap(), new.amount.clone().unwrap());
