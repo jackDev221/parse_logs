@@ -140,10 +140,10 @@ fn write_paths(path_diff: &mut Vec<Vec<f64>>, compare_res: &mut File) {
 }
 
 fn init_diff_pers() -> Vec<f64> {
-    let mut diff_pers: Vec<f64> = vec![0.0; 8];
-    // diff_pers.push(vec![0.0; 8]);
-    // diff_pers.push(vec![0.0; 8]);
-    // diff_pers.push(vec![0.0; 8]);
+    let mut diff_pers: Vec<f64> = vec![0.0; 7];
+    // diff_pers.push(vec![0.0; 7]);
+    // diff_pers.push(vec![0.0; 7]);
+    // diff_pers.push(vec![0.0; 7]);
     diff_pers
 }
 
@@ -177,12 +177,12 @@ fn compare_res_to_string(diff_pers: &mut Vec<f64>) -> String {
         "count:{}, diff <0.01%: {}%,  0.01%~0.1%:{}%, 0.1%~1%:{}%, 1%~2%:{}%, 2%~5%:{}%, 5%~10%:{}%, >10%:{}%",
         count,
         diff_pers[0] * 100.0,
+        diff_pers[1] * 100.0,
         diff_pers[2] * 100.0,
         diff_pers[3] * 100.0,
         diff_pers[4] * 100.0,
         diff_pers[5] * 100.0,
         diff_pers[6] * 100.0,
-        diff_pers[7] * 100.0,
     )
 }
 
