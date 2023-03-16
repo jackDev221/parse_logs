@@ -33,10 +33,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     let mut sum_diff_impact_pers = init_diff_pers();
     let mut sum_diff_inusd_pers = init_diff_pers();
     let mut sum_diff_ount_pers = init_diff_pers();
-    let mut count_paths: Vec<Vec<f64>> = vec![];
-    count_paths.push(vec![0.0; 2]);
-    count_paths.push(vec![0.0; 2]);
-    count_paths.push(vec![0.0; 2]);
+    let mut count_path = vec![0.0; 2];
 
     let mut token_pair_maps = HashMap::new();
 
@@ -59,7 +56,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
         }
 
         if let Ok((old_res, new_res, _)) = call_router_servers(client, &log_content).await {
-            let res = compare_results(
+            let (count, res) = compare_results(
                 index,
                 serde_json::to_string(&log_content).unwrap(),
                 &old_res,
@@ -69,22 +66,15 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
 
             for i in 0..res.len() {
                 let com_res = &res[i];
-                if com_res.pool_eq && com_res.road_addr_eq {
-                    calc_compare_res(&mut diff_amount_pers[i], com_res.diff_amount_per);
-                    calc_compare_res(&mut diff_fee_pers[i], com_res.diff_fee_per);
-                    calc_compare_res(&mut diff_impact_pers[i], com_res.diff_impact_per);
-                    calc_compare_res(&mut diff_inusd_pers[i], com_res.diff_inusd_per);
-                    calc_compare_res(&mut diff_ount_pers[i], com_res.diff_outusd_per);
-                    count_paths[i][1] += 1.0;
-                } else {
-                    count_paths[i][0] += 1.0;
-                }
-                calc_compare_res(&mut sum_diff_amount_pers[i], com_res.diff_amount_per);
-                calc_compare_res(&mut sum_diff_fee_pers[i], com_res.diff_fee_per);
-                calc_compare_res(&mut sum_diff_impact_pers[i], com_res.diff_impact_per);
-                calc_compare_res(&mut sum_diff_inusd_pers[i], com_res.diff_inusd_per);
-                calc_compare_res(&mut sum_diff_ount_pers[i], com_res.diff_outusd_per);
+                calc_compare_res(&mut diff_amount_pers, com_res.diff_amount_per);
+                calc_compare_res(&mut diff_fee_pers, com_res.diff_fee_per);
+                calc_compare_res(&mut diff_impact_pers, com_res.diff_impact_per);
+                calc_compare_res(&mut diff_inusd_pers, com_res.diff_inusd_per);
+                calc_compare_res(&mut diff_ount_pers, com_res.diff_outusd_per);
             }
+            count_path[1] += res.len() as f64;
+            count_path[0] += (count - res.len() as f64);
+
             index += 1;
         } else {
             warn!("Fail to get response for {}", line_content);
@@ -95,29 +85,38 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
     write_compare_result("impact".to_owned(), &mut diff_impact_pers, &mut compare_file);
     write_compare_result("Inusd".to_owned(), &mut diff_inusd_pers, &mut compare_file);
     write_compare_result("Outusd".to_owned(), &mut diff_ount_pers, &mut compare_file);
-    write_paths(&mut count_paths, &mut compare_file);
 
-    let _ = compare_file.write_all("-------------------以下忽视路径是否相同，只是对比兑换出值-----------------------------\n".as_bytes());
-    write_compare_result("Sum Amount".to_owned(), &mut sum_diff_amount_pers, &mut compare_file);
-    write_compare_result("Sum Fee".to_owned(), &mut sum_diff_fee_pers, &mut compare_file);
-    write_compare_result("Sum impact".to_owned(), &mut sum_diff_impact_pers, &mut compare_file);
-    write_compare_result("Sum Inusd".to_owned(), &mut sum_diff_inusd_pers, &mut compare_file);
-    write_compare_result("Sum Outusd".to_owned(), &mut sum_diff_ount_pers, &mut compare_file);
+    let count: f64 = count_path.iter().sum();
+    for i in 0..count_path.len() {
+        count_path[i] /= count;
+    }
+
+    let _ = compare_file.write_all(
+        format!(
+            "sum:{}, diff:{}% same:{}%\n",
+            count,
+            count_path[0] * 100.0,
+            count_path[1] * 100.0
+        ).as_bytes()
+    );
+
+    // let _ = compare_file.write_all("-------------------以下忽视路径是否相同，只是对比兑换出值-----------------------------\n".as_bytes());
+    // write_compare_result("Sum Amount".to_owned(), &mut sum_diff_amount_pers, &mut compare_file);
+    // write_compare_result("Sum Fee".to_owned(), &mut sum_diff_fee_pers, &mut compare_file);
+    // write_compare_result("Sum impact".to_owned(), &mut sum_diff_impact_pers, &mut compare_file);
+    // write_compare_result("Sum Inusd".to_owned(), &mut sum_diff_inusd_pers, &mut compare_file);
+    // write_compare_result("Sum Outusd".to_owned(), &mut sum_diff_ount_pers, &mut compare_file);
     Ok(())
 }
 
-fn write_compare_result(tag: String, pers: &mut Vec<Vec<f64>>, compare_res: &mut File) {
+fn write_compare_result(tag: String, pers: &mut Vec<f64>, compare_res: &mut File) {
     let _ = compare_res.write_all(format!("{}: diff\n", tag).as_bytes());
-    for i in 0..3 {
-        let res = compare_res_to_string(&mut pers[i]);
-
-        let _ = compare_res.write_all(
-            format!(
-                "path:{}: {}\n",
-                i, res
-            ).as_bytes()
-        );
-    }
+    let res = compare_res_to_string(pers);
+    let _ = compare_res.write_all(
+        format!(
+            " {}\n",
+            res
+        ).as_bytes());
 }
 
 fn write_paths(path_diff: &mut Vec<Vec<f64>>, compare_res: &mut File) {
@@ -140,11 +139,11 @@ fn write_paths(path_diff: &mut Vec<Vec<f64>>, compare_res: &mut File) {
     }
 }
 
-fn init_diff_pers() -> Vec<Vec<f64>> {
-    let mut diff_pers: Vec<Vec<f64>> = vec![];
-    diff_pers.push(vec![0.0; 8]);
-    diff_pers.push(vec![0.0; 8]);
-    diff_pers.push(vec![0.0; 8]);
+fn init_diff_pers() -> Vec<f64> {
+    let mut diff_pers: Vec<f64> = vec![0.0; 8];
+    // diff_pers.push(vec![0.0; 8]);
+    // diff_pers.push(vec![0.0; 8]);
+    // diff_pers.push(vec![0.0; 8]);
     diff_pers
 }
 
@@ -296,31 +295,42 @@ fn compare_results(
     log_origin: String,
     old: &RouterResult,
     new: &RouterResult,
-    compare_res: &mut File) -> Vec<CompareResult> {
+    compare_res: &mut File) -> (f64, Vec<CompareResult>) {
     let old_paths = old.data.clone().unwrap();
     let new_paths = new.data.clone().unwrap();
-    let size = old_paths.len().min(new_paths.len());
+    let size = old_paths.len();
     let mut res: Vec<CompareResult> = vec![];
+    let mut count = 0.0;
     for i in 0..size {
         let old_path = old_paths.get(i).unwrap();
-        let new_path = new_paths.get(i).unwrap();
-        let compare_op = CompareResult::gen_from_paths(old_path, new_path);
-        if compare_op.is_none() {
-            break;
+        let size_new = new_paths.len();
+        if old_path.amount.is_none() {
+            continue;
         }
-        let compare = compare_op.unwrap();
-        if compare.diff_amount_per > 0.01 && compare.pool_eq && compare.road_addr_eq {
-            let _ = compare_res.write_all(format!("origin log: {}, differ:{} \n", log_origin, compare.diff_amount_per).as_bytes());
-            let _ = compare_res.write_all(format!(
-                "index:{} path_index:{}\nold:{}\nnew:{}\n",
-                index,
-                i,
-                serde_json::to_string(old_path).unwrap(),
-                serde_json::to_string(new_path).unwrap()
-            ).as_bytes());
+        count += 1.0;
+        for j in 0..size_new {
+            let new_path = new_paths.get(j).unwrap();
+            let compare_op = CompareResult::gen_from_paths(old_path, new_path);
+            if compare_op.is_none() {
+                continue;
+            }
+
+            let compare = compare_op.unwrap();
+            if compare.pool_eq && compare.road_addr_eq {
+                if compare.diff_amount_per > 0.01 {
+                    let _ = compare_res.write_all(format!("origin log: {}, differ:{} \n", log_origin, compare.diff_amount_per).as_bytes());
+                    let _ = compare_res.write_all(format!(
+                        "index:{} path_index:{}\nold:{}\nnew:{}\n",
+                        index,
+                        i,
+                        serde_json::to_string(old_path).unwrap(),
+                        serde_json::to_string(new_path).unwrap()
+                    ).as_bytes());
+                }
+                res.push(compare);
+            }
         }
-        res.push(compare);
     }
-    res
+    (count, res)
 }
 
