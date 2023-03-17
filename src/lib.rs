@@ -47,8 +47,10 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
 
         let key = format!("{}_{}", log_content.from_token, log_content.to_token);
         let is_contain = token_pair_maps.contains_key(&key);
-        if config.rm_duplicate && is_contain {
-            continue;
+        if  is_contain {
+            if config.rm_duplicate {
+                continue;
+            }
         } else {
             token_pair_maps.insert(key.clone(), key);
             if config.restore_input {
