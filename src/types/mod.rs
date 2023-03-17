@@ -121,7 +121,7 @@ impl CompareResult {
 fn clac_string_per(a: String, b: String) -> f64 {
     let a_f = a.parse::<f64>().expect("parse to f6");
     let b_f = b.parse::<f64>().expect("parse to f6");
-    clac_per(a_f, b_f)
+    clac_per(a_f.abs(), b_f.abs())
 }
 
 fn clac_per(a: f64, b: f64) -> f64 {
