@@ -21,7 +21,7 @@ const LOG_CONTENT_FLAG: &str = "logContent";
 pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyhow::Result<()> {
     let file = File::open(config.log_file_path.as_str())?;
     let reader = BufReader::new(file);
-    let (mut compare_detail_file, mut compare_file) = get_output_files(&config);
+    let (mut compare_detail_file, mut compare_file, mut restore_file) = get_output_files(&config);
     let mut index: u64 = 0;
     let mut diff_amount_pers = init_diff_pers();
     let mut diff_fee_pers = init_diff_pers();
@@ -48,6 +48,9 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
             continue;
         } else {
             token_pair_maps.insert(key.clone(), key);
+            if config.restore_input {
+                let _ = restore_file.write_all(format!("{}\n", line_content).as_bytes());
+            }
         }
 
         if let Ok((old_res, new_res, _)) = call_router_servers(client, &log_content).await {
@@ -88,7 +91,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
 
     let _ = compare_file.write_all(
         format!(
-            "sum:{}, diff:{}% same:{}%\n",
+            "Path: sum:{}, diff:{}% same:{}%\n",
             count,
             count_path[0] * 100.0,
             count_path[1] * 100.0
@@ -199,10 +202,11 @@ fn decode_to_log_content(line: &str) -> anyhow::Result<LogContent> {
     return Err(format_err!("Fail to parse into json"));
 }
 
-fn get_output_files(config: &Config) -> (File, File) {
+fn get_output_files(config: &Config) -> (File, File, File) {
     let compare_detail = OpenOptions::new().create(true).write(true).append(true).open(config.compare_res_detail_path.as_str()).unwrap();
     let compare = OpenOptions::new().create(true).write(true).append(true).open(config.compare_res_path.as_str()).unwrap();
-    (compare_detail, compare)
+    let restore_input = OpenOptions::new().create(true).write(true).append(true).open(config.restore_input_path.as_str()).unwrap();
+    (compare_detail, compare, restore_input)
 }
 
 fn compare_results(
@@ -210,7 +214,8 @@ fn compare_results(
     log_origin: String,
     old: &RouterResult,
     new: &RouterResult,
-    compare_res: &mut File) -> (f64, Vec<CompareResult>) {
+    compare_res: &mut File,
+) -> (f64, Vec<CompareResult>) {
     let old_paths = old.data.clone().unwrap();
     let new_paths = new.data.clone().unwrap();
     let size = old_paths.len();
@@ -232,7 +237,7 @@ fn compare_results(
 
             let compare = compare_op.unwrap();
             if compare.pool_eq && compare.road_addr_eq {
-                if compare.diff_amount_per > 0.01 {
+                if compare.diff_impact_per > 0.01 {
                     let _ = compare_res.write_all(format!("origin log: {}, differ:{} \n", log_origin, compare.diff_amount_per).as_bytes());
                     let _ = compare_res.write_all(format!(
                         "index:{} path_index:{}\nold:{}\nnew:{}\n",

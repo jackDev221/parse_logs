@@ -5,5 +5,7 @@
   "compareResPath": "./res/compare",
   "compareResDetailPath": "./res/compare_d",
   "useBaseTokens": "true",
-  "maxCount": 100
+  "maxCount": 100,
+  "restoreInput": false,
+  "restoreInputPath": "./res/new_tron.log"
 }

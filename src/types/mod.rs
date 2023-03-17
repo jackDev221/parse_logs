@@ -66,6 +66,10 @@ pub struct Config {
     pub use_base_tokens: String,
     #[serde(rename = "maxCount")]
     pub max_count: u64,
+    #[serde(rename = "restoreInput")]
+    pub restore_input: bool,
+    #[serde(rename = "restoreInputPath")]
+    pub restore_input_path: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
