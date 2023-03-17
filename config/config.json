@@ -7,5 +7,7 @@
   "useBaseTokens": "true",
   "maxCount": 100,
   "restoreInput": false,
-  "restoreInputPath": "./res/new_tron.log"
+  "restoreInputPath": "./res/new_tron.log",
+  "rmDuplicate":true,
+  "tokenPairOfLargePaths": "./res/token_pair"
 }

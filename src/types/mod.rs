@@ -46,8 +46,8 @@ pub struct Path {
     pub road_for_name: Option<Vec<String>>,
     // #[serde(default)]
     // pub cast: u32,
-    // #[serde(default)]
-    // pub paths:u32,
+    #[serde(default)]
+    pub paths:u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -70,6 +70,10 @@ pub struct Config {
     pub restore_input: bool,
     #[serde(rename = "restoreInputPath")]
     pub restore_input_path: String,
+    #[serde(rename = "rmDuplicate")]
+    pub rm_duplicate: bool,
+    #[serde(rename = "tokenPairOfLargePaths")]
+    pub token_pair_of_large_paths: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
