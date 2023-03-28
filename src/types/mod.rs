@@ -47,7 +47,7 @@ pub struct Path {
     // #[serde(default)]
     // pub cast: u32,
     #[serde(default)]
-    pub paths:u32,
+    pub paths: u32,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -129,6 +129,13 @@ fn clac_string_per(a: String, b: String) -> f64 {
 }
 
 fn clac_per(a: f64, b: f64) -> f64 {
+    if a == 0.0 {
+        if b > 0.0 {
+            return 0.1;
+        } else {
+            return 0.0;
+        }
+    }
     ((a - b) / a).abs()
 }
 
