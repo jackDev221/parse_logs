@@ -17,6 +17,47 @@ const SWAP_ROUTING_FLAG: &str = "request-swap-routingInV2";
 const GRAFANA_INFO_FLAG: &str = "--GRAFANA_INFO--";
 const LOG_CONTENT_FLAG: &str = "logContent";
 
+pub async fn count_token_pairs(config: Config) -> anyhow::Result<()> {
+    let mut key_map: HashMap<String, u64> = HashMap::new();
+    let file = File::open(config.log_file_path.as_str())?;
+    let reader = BufReader::new(file);
+    let mut compare = OpenOptions::new().create(true).write(true).append(true).open(config.compare_res_path.as_str()).unwrap();
+    for line in reader.lines() {
+        let line_content = line?;
+        if !line_content.contains(SWAP_ROUTING_FLAG) {
+            continue;
+        }
+        let log_content = decode_to_log_content(&line_content)?;
+        let mut tokens = vec![log_content.from_token.clone(), log_content.to_token.clone()];
+        tokens.sort();
+        let key = tokens.join("|");
+        key_map.entry(key).and_modify(|counter| *counter += 1).or_insert(1);
+    }
+    let mut res_token_count: Vec<(String, u64)> = vec![];
+    for (key, value) in key_map.into_iter() {
+        res_token_count.push((key.clone(), value));
+        // let _ = compare.write_all(
+        //     format!(
+        //         "{}:{}\n",
+        //         key,
+        //         value
+        //     ).as_bytes()
+        // );
+    }
+    res_token_count.sort_by(|a, b| b.1.cmp(&a.1));
+
+    for (k, v) in res_token_count.into_iter() {
+        let _ = compare.write_all(
+            format!(
+                "{}:{}\n",
+                k,
+                v
+            ).as_bytes()
+        );
+    }
+    Ok(())
+}
+
 
 pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyhow::Result<()> {
     let file = File::open(config.log_file_path.as_str())?;
@@ -47,7 +88,7 @@ pub async fn parse_logs_fn(client: &mut RouterApiClient, config: Config) -> anyh
 
         let key = format!("{}_{}", log_content.from_token, log_content.to_token);
         let is_contain = token_pair_maps.contains_key(&key);
-        if  is_contain {
+        if is_contain {
             if config.rm_duplicate {
                 continue;
             }

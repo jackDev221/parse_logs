@@ -1,11 +1,7 @@
 use std::env;
-use std::time::Duration;
-use reqwest::Url;
-
-
-use parse_logs::{Config, parse_logs_fn};
+use parse_logs::{Config, count_token_pairs};
 use parse_logs::init_log;
-use parse_logs::RouterApiClient;
+
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -17,19 +13,16 @@ async fn main() -> anyhow::Result<()> {
     let config_file = (&args[1]).clone();
     let config = Config::from_file(config_file.as_str());
     init_log("info");
-    let mut client = RouterApiClient::new(
-        Url::parse(config.old_url.as_str()).expect("decode old url fail"),
-        Url::parse(config.new_url.as_str()).expect("decode new url fail"),
-        config.use_base_tokens.clone(),
-        Duration::from_secs(15),
-    );
-    parse_logs_fn(&mut client, config).await?;
+    count_token_pairs(config).await?;
     Ok(())
 }
 
 #[tokio::test]
 async fn test_client() {
     use parse_logs::LogContent;
+    use parse_logs::RouterApiClient;
+    use reqwest::Url;
+    use std::time::Duration;
     let mut client = RouterApiClient::new(
         Url::parse("http://127.0.0.1:8080/routingInV2").expect("decode old url fail"),
         Url::parse("http://127.0.0.1:8080/routingInV2").expect("decode new url fail"),
